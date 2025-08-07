@@ -1,0 +1,238 @@
+{
+    "25-07-18": [
+        {
+            "Time": "16:51",
+            "Temperature F": "71",
+            "Dew Point F": "61",
+            "Humidity %": "0.7",
+            "Wind": "WNW",
+            "Wind Speed mph": "8",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.94",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "17:51",
+            "Temperature F": "70",
+            "Dew Point F": "61",
+            "Humidity %": "0.73",
+            "Wind": "W",
+            "Wind Speed mph": "9",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.93",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "18:51",
+            "Temperature F": "69",
+            "Dew Point F": "61",
+            "Humidity %": "0.75",
+            "Wind": "W",
+            "Wind Speed mph": "9",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.95",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "19:47",
+            "Temperature F": "68",
+            "Dew Point F": "61",
+            "Humidity %": "0.78",
+            "Wind": "NW",
+            "Wind Speed mph": "6",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.95",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "19:51",
+            "Temperature F": "68",
+            "Dew Point F": "61",
+            "Humidity %": "0.78",
+            "Wind": "VAR",
+            "Wind Speed mph": "5",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.96",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        }
+    ],
+    "25-07-19": [
+        {
+            "Time": "16:25",
+            "Temperature F": "71",
+            "Dew Point F": "61",
+            "Humidity %": "0.7",
+            "Wind": "SSW",
+            "Wind Speed mph": "12",
+            "Wind Gust mph": "21",
+            "Pressure in": "29.97",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "16:51",
+            "Temperature F": "70",
+            "Dew Point F": "60",
+            "Humidity %": "0.71",
+            "Wind": "SW",
+            "Wind Speed mph": "9",
+            "Wind Gust mph": "20",
+            "Pressure in": "29.98",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "17:51",
+            "Temperature F": "69",
+            "Dew Point F": "60",
+            "Humidity %": "0.73",
+            "Wind": "SSW",
+            "Wind Speed mph": "9",
+            "Wind Gust mph": "23",
+            "Pressure in": "29.98",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "18:51",
+            "Temperature F": "68",
+            "Dew Point F": "59",
+            "Humidity %": "0.73",
+            "Wind": "SW",
+            "Wind Speed mph": "8",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.99",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "19:51",
+            "Temperature F": "67",
+            "Dew Point F": "58",
+            "Humidity %": "0.73",
+            "Wind": "S",
+            "Wind Speed mph": "6",
+            "Wind Gust mph": "0",
+            "Pressure in": "30.00",
+            "Precip. In": "0.0",
+            "Condition": "Cloudy"
+        }
+    ],
+    "25-07-20": [
+        {
+            "Time": "16:51",
+            "Temperature F": "69",
+            "Dew Point F": "58",
+            "Humidity %": "0.68",
+            "Wind": "SW",
+            "Wind Speed mph": "8",
+            "Wind Gust mph": "23",
+            "Pressure in": "29.95",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "17:51",
+            "Temperature F": "68",
+            "Dew Point F": "59",
+            "Humidity %": "0.73",
+            "Wind": "SSW",
+            "Wind Speed mph": "9",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.94",
+            "Precip. In": "0.0",
+            "Condition": "Cloudy"
+        },
+        {
+            "Time": "18:51",
+            "Temperature F": "67",
+            "Dew Point F": "58",
+            "Humidity %": "0.73",
+            "Wind": "SW",
+            "Wind Speed mph": "8",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.95",
+            "Precip. In": "0.0",
+            "Condition": "Cloudy"
+        },
+        {
+            "Time": "19:51",
+            "Temperature F": "67",
+            "Dew Point F": "58",
+            "Humidity %": "0.73",
+            "Wind": "SSW",
+            "Wind Speed mph": "8",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.96",
+            "Precip. In": "0.0",
+            "Condition": "Cloudy"
+        }
+    ],
+    "25-07-21": [
+        {
+            "Time": "16:51",
+            "Temperature F": "71",
+            "Dew Point F": "59",
+            "Humidity %": "0.66",
+            "Wind": "SSW",
+            "Wind Speed mph": "9",
+            "Wind Gust mph": "25",
+            "Pressure in": "29.94",
+            "Precip. In": "0.0",
+            "Condition": "Partly Cloudy"
+        },
+        {
+            "Time": "17:51",
+            "Temperature F": "70",
+            "Dew Point F": "59",
+            "Humidity %": "0.68",
+            "Wind": "SW",
+            "Wind Speed mph": "8",
+            "Wind Gust mph": "21",
+            "Pressure in": "29.93",
+            "Precip. In": "0.0",
+            "Condition": "Partly Cloudy"
+        },
+        {
+            "Time": "18:22",
+            "Temperature F": "70",
+            "Dew Point F": "59",
+            "Humidity %": "0.68",
+            "Wind": "SSW",
+            "Wind Speed mph": "9",
+            "Wind Gust mph": "21",
+            "Pressure in": "29.94",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "18:51",
+            "Temperature F": "69",
+            "Dew Point F": "59",
+            "Humidity %": "0.7",
+            "Wind": "VAR",
+            "Wind Speed mph": "7",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.94",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        },
+        {
+            "Time": "19:51",
+            "Temperature F": "68",
+            "Dew Point F": "60",
+            "Humidity %": "0.76",
+            "Wind": "SW",
+            "Wind Speed mph": "7",
+            "Wind Gust mph": "0",
+            "Pressure in": "29.95",
+            "Precip. In": "0.0",
+            "Condition": "Mostly Cloudy"
+        }
+    ]
+}
