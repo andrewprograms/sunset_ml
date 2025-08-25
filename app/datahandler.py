@@ -1,19 +1,26 @@
 # sunsets/model/datahandler.py
 from __future__ import annotations
 
+# Python imports
 import json
 import re
 import warnings
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
+import sys
 
+# 3rd-party imports
 import torch
 from PIL import Image
 from torch import Tensor
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchvision import transforms
 
-import config
+# 1st-party imports
+BASE_DIR: Path = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
+print("REPO_DIR:", BASE_DIR)
+from app.config import IMAGENET_MEAN, IMAGENET_STD, NUM_CLASSES
 
 Transform = Callable[[Image.Image], Tensor]
 
@@ -23,7 +30,7 @@ def create_transform(image_size: int) -> Transform:
         [
             transforms.Resize((image_size, image_size)),
             transforms.ToTensor(),
-            transforms.Normalize(config.IMAGENET_MEAN, config.IMAGENET_STD),
+            transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD),
         ]
     )
 
@@ -71,7 +78,7 @@ class SunsetDataset(Dataset[Tuple[Tuple[Tensor, Tensor], int]]):
         image_dir: Path,
         transform: Optional[Transform] = None,
         verify_images: bool = True,
-        num_classes: int = config.NUM_CLASSES,
+        num_classes: int = NUM_CLASSES,
     ) -> None:
         self.image_dir: Path = image_dir
         self.transform: Optional[Transform] = transform
@@ -150,7 +157,7 @@ def create_dataloaders(
         image_dir=image_dir,
         transform=transform,
         verify_images=True,
-        num_classes=config.NUM_CLASSES,
+        num_classes=NUM_CLASSES,
     )
 
     if len(dataset) == 0:

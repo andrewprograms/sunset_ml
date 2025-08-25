@@ -10,7 +10,7 @@ import sys
 from PyQt6 import QtWidgets
 
 # 1st-party imports
-from gui import SunsetGUI
+from app.gui import SunsetGUI
 
 
 def main() -> None:

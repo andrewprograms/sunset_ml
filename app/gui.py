@@ -1,19 +1,26 @@
 # sunsets/model/gui.py
 from __future__ import annotations
 
+# Python imports
 import sys
 from pathlib import Path
 from typing import Optional
 
+# 3rd-party imports
 import torch
 from PIL import Image
 from PyQt6 import QtWidgets
 from PyQt6.QtCore import Qt  # noqa: F401  (kept for potential future use)
 from torch import Tensor
 
-import config
-import datahandler
-import aiml
+BASE_DIR: Path = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
+print("REPO_DIR:", BASE_DIR)
+
+# 1st-party imports
+from app.config import RANDOM_SEED, IMAGE_SIZE, IMAGE_DIR
+from app.datahandler import create_transform
+from app.aiml import train_and_save, set_seed, load_model_for_inference, predict_class_index
 
 
 class SunsetGUI(QtWidgets.QWidget):
@@ -28,7 +35,7 @@ class SunsetGUI(QtWidgets.QWidget):
         self.img1h_path: Optional[Path] = None  # selected –1 h image
         self.model: Optional[torch.nn.Module] = None
         self.device: Optional[torch.device] = None
-        self.transform = datahandler.create_transform(config.IMAGE_SIZE)
+        self.transform = create_transform(IMAGE_SIZE)
 
         # ── training (optional) ───────────────────────────────
         train_btn = QtWidgets.QPushButton("Train model")
@@ -55,16 +62,16 @@ class SunsetGUI(QtWidgets.QWidget):
 
     # ---- actions ---------------------------------------------------
     def train_model(self) -> None:
-        aiml.train_and_save()  # use current config
+        train_and_save()  # use current config
 
     def load_trained_model(self) -> None:
-        aiml.set_seed(config.RANDOM_SEED)
-        self.model, self.device = aiml.load_model_for_inference()
+        set_seed(RANDOM_SEED)
+        self.model, self.device = load_model_for_inference()
 
     # ─────────── helpers ───────────────────────────────────────────
     def choose_img2h(self) -> None:
         file, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select –2 h image", str(config.IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
+            self, "Select –2 h image", str(IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
         )
         if file:
             self.img2h_path = Path(file)
@@ -72,7 +79,7 @@ class SunsetGUI(QtWidgets.QWidget):
 
     def choose_img1h(self) -> None:
         file, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select –1 h image", str(config.IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
+            self, "Select –1 h image", str(IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
         )
         if file:
             self.img1h_path = Path(file)
@@ -84,7 +91,7 @@ class SunsetGUI(QtWidgets.QWidget):
     def _load_tensor(self, path: Path) -> Tensor:
         if self.device is None:
             # lazily init device to let CPU/GPU be chosen at runtime
-            _, self.device = aiml.load_model_for_inference()
+            _, self.device = load_model_for_inference()
         img = Image.open(path).convert("RGB")
         return self.transform(img).unsqueeze(0).to(self.device)
 
@@ -95,6 +102,6 @@ class SunsetGUI(QtWidgets.QWidget):
         assert self.img2h_path is not None and self.img1h_path is not None, "Select both images first"
         img2h = self._load_tensor(self.img2h_path)
         img1h = self._load_tensor(self.img1h_path)
-        cls_idx = aiml.predict_class_index(self.model, img2h, img1h)
+        cls_idx = predict_class_index(self.model, img2h, img1h)
         pred = cls_idx + 1  # shift back to 1-5 for display
         QtWidgets.QMessageBox.information(self, "Prediction", f"Predicted sunset score: {pred}")

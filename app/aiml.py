@@ -1,11 +1,14 @@
 # sunsets/model/aiml.py
 from __future__ import annotations
 
+# Python Imports
+import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+# 3rd Party Imports
 import numpy as np
 import torch
 import torch.nn as nn
@@ -13,8 +16,23 @@ from sklearn.metrics import classification_report, confusion_matrix
 from torch import Tensor
 from torchvision import models
 
-import config
-import datahandler
+# 1st Party Imports
+BASE_DIR: Path = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
+print("REPO_DIR:", BASE_DIR)
+from app.config import (
+    NUM_CLASSES,
+    IMAGE_SIZE,
+    BATCH_SIZE,
+    NUM_EPOCHS,
+    LEARNING_RATE,
+    VAL_SPLIT,
+    RANDOM_SEED,
+    JSON_PATH,
+    IMAGE_DIR,
+    MODEL_PATH,
+)
+from app.datahandler import create_transform, create_dataloaders
 
 
 # -----------------------------
@@ -23,6 +41,7 @@ import datahandler
 def set_seed(seed: int = 42) -> None:
     import random
     import numpy as np
+
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -46,14 +65,22 @@ def safe_load_state_dict(
     """Load only compatible weights from checkpoint."""
     state = torch.load(ckpt_path, map_location=device)
     own_state = model.state_dict()
-    filtered = {k: v for k, v in state.items() if k in own_state and v.shape == own_state[k].shape}
+    filtered = {
+        k: v
+        for k, v in state.items()
+        if k in own_state and v.shape == own_state[k].shape
+    }
     missing, unexpected = model.load_state_dict(filtered, strict=False)
     if missing or unexpected:
-        print(f"[safe_load_state_dict] skipped keys – missing: {missing}  unexpected: {unexpected}")
+        print(
+            f"[safe_load_state_dict] skipped keys – missing: {missing}  unexpected: {unexpected}"
+        )
     return model
 
 
-def load_best_if_exists(model: nn.Module, path: Path, device: torch.device) -> nn.Module:
+def load_best_if_exists(
+    model: nn.Module, path: Path, device: torch.device
+) -> nn.Module:
     if path.exists():
         return safe_load_state_dict(model, path, device)
     return model
@@ -65,10 +92,14 @@ def load_best_if_exists(model: nn.Module, path: Path, device: torch.device) -> n
 class DualResNet(nn.Module):
     """Dual-branch ResNet18 model that processes two images and outputs class logits."""
 
-    def __init__(self, num_classes: int = config.NUM_CLASSES, shared_backbone: bool = True) -> None:
+    def __init__(
+        self, num_classes: int = NUM_CLASSES, shared_backbone: bool = True
+    ) -> None:
         super().__init__()
         backbone = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
-        self.feature_extractor = nn.Sequential(*list(backbone.children())[:-1])  # (B,512,1,1)
+        self.feature_extractor = nn.Sequential(
+            *list(backbone.children())[:-1]
+        )  # (B,512,1,1)
         if shared_backbone:
             self.feature_extractor2 = self.feature_extractor
         else:
@@ -95,13 +126,13 @@ class DualResNet(nn.Module):
 # -----------------------------
 @dataclass(frozen=True)
 class TrainConfig:
-    image_size: int = config.IMAGE_SIZE
-    batch_size: int = config.BATCH_SIZE
-    num_epochs: int = config.NUM_EPOCHS
-    learning_rate: float = config.LEARNING_RATE
-    val_split: float = config.VAL_SPLIT
-    num_classes: int = config.NUM_CLASSES
-    seed: int = config.RANDOM_SEED
+    image_size: int = IMAGE_SIZE
+    batch_size: int = BATCH_SIZE
+    num_epochs: int = NUM_EPOCHS
+    learning_rate: float = LEARNING_RATE
+    val_split: float = VAL_SPLIT
+    num_classes: int = NUM_CLASSES
+    seed: int = RANDOM_SEED
 
 
 def _mask_valid(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
@@ -128,7 +159,9 @@ def train_one_epoch(
 
         valid_mask = _mask_valid(labels, outputs.size(1))
         if not torch.all(valid_mask):
-            warnings.warn(f"[train] Dropping {(~valid_mask).sum().item()} invalid label(s).")
+            warnings.warn(
+                f"[train] Dropping {(~valid_mask).sum().item()} invalid label(s)."
+            )
         if valid_mask.sum().item() == 0:
             continue
 
@@ -185,7 +218,12 @@ def evaluate(
 
     if total == 0:
         return 0.0, 0.0, np.array([]), np.array([])
-    return running_loss / total, correct / total, np.array(all_preds), np.array(all_labels)
+    return (
+        running_loss / total,
+        correct / total,
+        np.array(all_preds),
+        np.array(all_labels),
+    )
 
 
 def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
@@ -194,9 +232,9 @@ def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
     set_seed(cfg.seed)
     device = create_device()
 
-    transform = datahandler.create_transform(cfg.image_size)
-    train_loader, val_loader = datahandler.create_dataloaders(
-        config.JSON_PATH, config.IMAGE_DIR, transform, cfg.batch_size, cfg.val_split, cfg.seed, device
+    transform = create_transform(cfg.image_size)
+    train_loader, val_loader = create_dataloaders(
+        JSON_PATH, IMAGE_DIR, transform, cfg.batch_size, cfg.val_split, cfg.seed, device
     )
 
     model = DualResNet(num_classes=cfg.num_classes, shared_backbone=True).to(device)
@@ -205,7 +243,9 @@ def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
 
     best_val_acc = float("-inf")
     for epoch in range(cfg.num_epochs):
-        train_loss, train_acc = train_one_epoch(model, train_loader, criterion, optimizer, device)
+        train_loss, train_acc = train_one_epoch(
+            model, train_loader, criterion, optimizer, device
+        )
         val_loss, val_acc, _, _ = evaluate(model, val_loader, criterion, device)
         print(
             f"Epoch [{epoch + 1}/{cfg.num_epochs}] | "
@@ -215,34 +255,43 @@ def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
 
         if val_acc >= best_val_acc:
             best_val_acc = val_acc
-            save_checkpoint(model, config.MODEL_PATH)
+            save_checkpoint(model, MODEL_PATH)
             print(f"Saved new best model with Val Acc: {best_val_acc:.4f}")
 
-    if not config.MODEL_PATH.exists():
-        save_checkpoint(model, config.MODEL_PATH)
-        print("No checkpoint was saved during training – wrote final epoch weights instead.")
+    if not MODEL_PATH.exists():
+        save_checkpoint(model, MODEL_PATH)
+        print(
+            "No checkpoint was saved during training – wrote final epoch weights instead."
+        )
 
     # Final evaluation using best checkpoint (when compatible)
-    model = load_best_if_exists(model, config.MODEL_PATH, device)
+    model = load_best_if_exists(model, MODEL_PATH, device)
     _, _, val_preds, val_labels = evaluate(model, val_loader, criterion, device)
 
     if val_preds.size == 0 or val_labels.size == 0:
-        print("No validation samples available to compute confusion matrix / classification report.")
+        print(
+            "No validation samples available to compute confusion matrix / classification report."
+        )
         return
 
     cm = confusion_matrix(val_labels, val_preds)
     print("Confusion Matrix:\n", cm)
-    print("Classification Report:\n", classification_report(val_labels, val_preds, digits=4))
+    print(
+        "Classification Report:\n",
+        classification_report(val_labels, val_preds, digits=4),
+    )
 
 
 # -----------------------------
 # Inference helpers
 # -----------------------------
-def load_model_for_inference(device: Optional[torch.device] = None) -> Tuple[nn.Module, torch.device]:
+def load_model_for_inference(
+    device: Optional[torch.device] = None,
+) -> Tuple[nn.Module, torch.device]:
     device = device or create_device()
-    model = DualResNet(num_classes=config.NUM_CLASSES, shared_backbone=True).to(device)
-    if config.MODEL_PATH.exists():
-        safe_load_state_dict(model, config.MODEL_PATH, device)
+    model = DualResNet(num_classes=NUM_CLASSES, shared_backbone=True).to(device)
+    if MODEL_PATH.exists():
+        safe_load_state_dict(model, MODEL_PATH, device)
     model.eval()
     return model, device
 
