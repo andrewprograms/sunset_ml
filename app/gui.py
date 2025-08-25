@@ -15,12 +15,17 @@ from torch import Tensor
 
 BASE_DIR: Path = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
-print("REPO_DIR:", BASE_DIR)
+# print("REPO_DIR:", BASE_DIR)
 
 # 1st-party imports
 from app.config import RANDOM_SEED, IMAGE_SIZE, IMAGE_DIR
 from app.datahandler import create_transform
-from app.aiml import train_and_save, set_seed, load_model_for_inference, predict_class_index
+from app.aiml import (
+    train_and_save,
+    set_seed,
+    load_model_for_inference,
+    predict_class_index,
+)
 
 
 class SunsetGUI(QtWidgets.QWidget):
@@ -98,10 +103,16 @@ class SunsetGUI(QtWidgets.QWidget):
     def predict_score(self) -> None:
         if self.model is None or self.device is None:
             self.load_trained_model()
-        assert self.model is not None and self.device is not None, "Model not initialized"
-        assert self.img2h_path is not None and self.img1h_path is not None, "Select both images first"
+        assert (
+            self.model is not None and self.device is not None
+        ), "Model not initialized"
+        assert (
+            self.img2h_path is not None and self.img1h_path is not None
+        ), "Select both images first"
         img2h = self._load_tensor(self.img2h_path)
         img1h = self._load_tensor(self.img1h_path)
         cls_idx = predict_class_index(self.model, img2h, img1h)
         pred = cls_idx + 1  # shift back to 1-5 for display
-        QtWidgets.QMessageBox.information(self, "Prediction", f"Predicted sunset score: {pred}")
+        QtWidgets.QMessageBox.information(
+            self, "Prediction", f"Predicted sunset score: {pred}"
+        )

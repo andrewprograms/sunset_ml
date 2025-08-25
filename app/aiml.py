@@ -19,7 +19,7 @@ from torchvision import models
 # 1st Party Imports
 BASE_DIR: Path = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
-print("REPO_DIR:", BASE_DIR)
+# print("REPO_DIR:", BASE_DIR)
 from app.config import (
     NUM_CLASSES,
     IMAGE_SIZE,

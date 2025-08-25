@@ -19,7 +19,7 @@ from torchvision import transforms
 # 1st-party imports
 BASE_DIR: Path = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
-print("REPO_DIR:", BASE_DIR)
+# print("REPO_DIR:", BASE_DIR)
 from app.config import IMAGENET_MEAN, IMAGENET_STD, NUM_CLASSES
 
 Transform = Callable[[Image.Image], Tensor]
@@ -113,7 +113,10 @@ class SunsetDataset(Dataset[Tuple[Tuple[Tensor, Tensor], int]]):
             path_neg2 = image_dir / img_dict["-2h"]
             path_neg1 = image_dir / img_dict["-1h"]
 
-            if not (_image_is_ok(path_neg2, verify_images) and _image_is_ok(path_neg1, verify_images)):
+            if not (
+                _image_is_ok(path_neg2, verify_images)
+                and _image_is_ok(path_neg1, verify_images)
+            ):
                 skipped_bad_image += 1
                 continue
 
@@ -162,7 +165,9 @@ def create_dataloaders(
 
     if len(dataset) == 0:
         empty_loader = DataLoader(dataset, batch_size=batch_size)
-        warnings.warn("[create_dataloaders] Dataset is empty after cleaning; training will be a no-op.")
+        warnings.warn(
+            "[create_dataloaders] Dataset is empty after cleaning; training will be a no-op."
+        )
         return empty_loader, empty_loader
 
     val_size = max(1, int(len(dataset) * val_split)) if len(dataset) > 1 else 0
