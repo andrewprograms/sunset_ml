@@ -40,9 +40,9 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 # Five classes: 1,2,3,4,5 in the JSON (we map to 0..4 internally)
 NUM_CLASSES: int = 5
 IMAGE_SIZE: int = 64
-BATCH_SIZE: int = 32
-NUM_EPOCHS: int = 10
-LEARNING_RATE: float = 1e-4
+BATCH_SIZE: int = 64
+NUM_EPOCHS: int = 20
+LEARNING_RATE: float = 5e-5
 VAL_SPLIT: float = 0.2
 RANDOM_SEED: int = 42
 
