@@ -1,4 +1,7 @@
-# sunsets/model/aiml.py
+# sunset_ml/app/aiml.py
+"""
+Utilities for training and evaluating sunset_ml model
+"""
 from __future__ import annotations
 
 # Python Imports
@@ -9,6 +12,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 # 3rd Party Imports
+import random
 import numpy as np
 import torch
 import torch.nn as nn
@@ -39,9 +43,7 @@ from app.datahandler import create_transform, create_dataloaders
 # Seed / Device / Checkpoints
 # -----------------------------
 def set_seed(seed: int = 42) -> None:
-    import random
-    import numpy as np
-
+    """Set seed for app"""
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -49,12 +51,14 @@ def set_seed(seed: int = 42) -> None:
 
 
 def create_device() -> torch.device:
+    """Create torch device for app (uses GPU if available)"""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
     return device
 
 
 def save_checkpoint(model: nn.Module, path: Path) -> None:
+    """Save model checkpoint to disk."""
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), path)
 
@@ -73,7 +77,7 @@ def safe_load_state_dict(
     missing, unexpected = model.load_state_dict(filtered, strict=False)
     if missing or unexpected:
         print(
-            f"[safe_load_state_dict] skipped keys – missing: {missing}  unexpected: {unexpected}"
+            f"[safe_load_state_dict] skipped keys - missing: {missing}  unexpected: {unexpected}"
         )
     return model
 
@@ -81,6 +85,7 @@ def safe_load_state_dict(
 def load_best_if_exists(
     model: nn.Module, path: Path, device: torch.device
 ) -> nn.Module:
+    """Load model checkpoint from disk if it exists."""
     if path.exists():
         return safe_load_state_dict(model, path, device)
     return model
@@ -114,6 +119,7 @@ class DualResNet(nn.Module):
         )
 
     def forward(self, img_2h: Tensor, img_1h: Tensor) -> Tensor:
+        """Forward pass."""
         f1 = self.feature_extractor(img_2h).flatten(1)
         f2 = self.feature_extractor2(img_1h).flatten(1)
         concatenated = torch.cat([f1, f2], dim=1)
@@ -126,6 +132,7 @@ class DualResNet(nn.Module):
 # -----------------------------
 @dataclass(frozen=True)
 class TrainConfig:
+    """Training config."""
     image_size: int = IMAGE_SIZE
     batch_size: int = BATCH_SIZE
     num_epochs: int = NUM_EPOCHS
@@ -136,6 +143,7 @@ class TrainConfig:
 
 
 def _mask_valid(labels: torch.Tensor, num_classes: int) -> torch.Tensor:
+    """Mask out invalid labels."""
     return (labels >= 0) & (labels < num_classes)
 
 
@@ -146,6 +154,7 @@ def train_one_epoch(
     optimizer: torch.optim.Optimizer,
     device: torch.device,
 ) -> Tuple[float, float]:
+    """Train model for one epoch."""
     model.train()
     running_loss = 0.0
     correct = 0
@@ -189,6 +198,7 @@ def evaluate(
     criterion: nn.Module,
     device: torch.device,
 ) -> Tuple[float, float, np.ndarray, np.ndarray]:
+    """Function to evaluate sunset_ml model."""
     model.eval()
     running_loss = 0.0
     correct = 0
@@ -261,7 +271,7 @@ def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
     if not MODEL_PATH.exists():
         save_checkpoint(model, MODEL_PATH)
         print(
-            "No checkpoint was saved during training – wrote final epoch weights instead."
+            "No checkpoint was saved during training - wrote final epoch weights instead."
         )
 
     # Final evaluation using best checkpoint (when compatible)
@@ -288,6 +298,7 @@ def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
 def load_model_for_inference(
     device: Optional[torch.device] = None,
 ) -> Tuple[nn.Module, torch.device]:
+    """Load trained model for inference."""
     device = device or create_device()
     model = DualResNet(num_classes=NUM_CLASSES, shared_backbone=True).to(device)
     if MODEL_PATH.exists():
@@ -297,6 +308,7 @@ def load_model_for_inference(
 
 
 def predict_class_index(model: nn.Module, img2h: Tensor, img1h: Tensor) -> int:
+    """Predict class index for a pair of images."""
     with torch.no_grad():
         logits = model(img2h, img1h)
         return int(logits.argmax(1).item())  # 0..4

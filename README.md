@@ -1,10 +1,10 @@
 # 🌅 Should I Go See the Sunset?
 
-Ever stared at the horizon two hours before sunset, wondering if you’ll be blessed by a glorious sky… or just catch smoggy orange mush? Worry no more! This highly scientific, probably overengineered project evaluates sunset potential using images taken at **T−2h and T−1h**. It predicts—on a 1–5 scale—whether it’s worth dropping everything and sprinting to your nearest west-facing beach.
+Ever stared at the horizon two hours before sunset, wondering if you’ll be blessed by a glorious sky… or just catch smoggy orange mush? Worry no more! This highly scientific, probably overengineered project evaluates sunset potential using images taken at **T−2h and T−1h**. It predicts—on a 1-5 scale—whether it’s worth dropping everything and sprinting to your nearest west-facing beach.
 
 ## What Is This?
 
-A PyTorch-based dual-image classifier that consumes sunset images taken **2 hours** and **1 hour** before sunset, and predicts a sunset "glory score" (1–5).
+A PyTorch-based dual-image classifier that consumes sunset images taken **2 hours** and **1 hour** before sunset, and predicts a sunset "glory score" (1-5).
 
 Yes, it's trained on real data. Yes, there's a GUI. No, we don't guarantee enlightenment, but you might achieve it anyway.
 
@@ -21,7 +21,7 @@ Yes, it's trained on real data. Yes, there's a GUI. No, we don't guarantee enlig
 ## Model Architecture
 
 - **Dual ResNet-18 backbones** (shared or separate) 🤖
-- Processes –2h and –1h images separately → feature concat → classification
+- Processes -2h and -1h images separately → feature concat → classification
 - Outputs a score from 1 (💩) to 5 (🔥) based on sunset beauty
 
 ## GUI Mode (Because Buttons > CLI)
@@ -30,7 +30,7 @@ Modes:
 - Train
     - Train the model with one click
 - Predict
-    - Choose two images: one from –2h, one from –1h
+    - Choose two images: one from -2h, one from -1h
     - Press "Predict Score"
 
 ## 🧪 Training

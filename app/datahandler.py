@@ -1,4 +1,7 @@
 # sunsets/model/datahandler.py
+"""
+Data handler for sunset_ml app.
+"""
 from __future__ import annotations
 
 # Python imports
@@ -6,7 +9,7 @@ import json
 import re
 import warnings
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 import sys
 
 # 3rd-party imports
@@ -26,6 +29,7 @@ Transform = Callable[[Image.Image], Tensor]
 
 
 def create_transform(image_size: int) -> Transform:
+    """Create a transform for a given image size."""
     return transforms.Compose(
         [
             transforms.Resize((image_size, image_size)),
@@ -155,6 +159,9 @@ def create_dataloaders(
     seed: int,
     device: torch.device,
 ) -> Tuple[DataLoader, DataLoader]:
+    """
+    Create training and validation dataloaders.
+    """
     dataset = SunsetDataset(
         json_path=json_path,
         image_dir=image_dir,

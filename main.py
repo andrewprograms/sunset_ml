@@ -1,4 +1,4 @@
-# sunsets/model/main.py
+# sunset_ml/main.py
 """
 Main entry-point for the GUI app.
 """

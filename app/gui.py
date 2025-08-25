@@ -1,4 +1,7 @@
 # sunsets/model/gui.py
+"""
+GUI front-end for sunset_ml app.
+"""
 from __future__ import annotations
 
 # Python imports
@@ -10,7 +13,6 @@ from typing import Optional
 import torch
 from PIL import Image
 from PyQt6 import QtWidgets
-from PyQt6.QtCore import Qt  # noqa: F401  (kept for potential future use)
 from torch import Tensor
 
 BASE_DIR: Path = Path(__file__).resolve().parent.parent
@@ -36,8 +38,8 @@ class SunsetGUI(QtWidgets.QWidget):
         self.setWindowTitle("Sunset scorer")
 
         layout = QtWidgets.QVBoxLayout(self)
-        self.img2h_path: Optional[Path] = None  # selected –2 h image
-        self.img1h_path: Optional[Path] = None  # selected –1 h image
+        self.img2h_path: Optional[Path] = None  # selected -2 h image
+        self.img1h_path: Optional[Path] = None  # selected -1 h image
         self.model: Optional[torch.nn.Module] = None
         self.device: Optional[torch.device] = None
         self.transform = create_transform(IMAGE_SIZE)
@@ -48,8 +50,8 @@ class SunsetGUI(QtWidgets.QWidget):
 
         # ── image pickers ─────────────────────────────────────
         picker = QtWidgets.QHBoxLayout()
-        self.btn2h = QtWidgets.QPushButton("Choose –2 h image")
-        self.btn1h = QtWidgets.QPushButton("Choose –1 h image")
+        self.btn2h = QtWidgets.QPushButton("Choose -2 h image")
+        self.btn1h = QtWidgets.QPushButton("Choose -1 h image")
         picker.addWidget(self.btn2h)
         picker.addWidget(self.btn1h)
         layout.addLayout(picker)
@@ -67,33 +69,39 @@ class SunsetGUI(QtWidgets.QWidget):
 
     # ---- actions ---------------------------------------------------
     def train_model(self) -> None:
+        """Train and save model."""
         train_and_save()  # use current config
 
     def load_trained_model(self) -> None:
+        """Load trained model."""
         set_seed(RANDOM_SEED)
         self.model, self.device = load_model_for_inference()
 
     # ─────────── helpers ───────────────────────────────────────────
     def choose_img2h(self) -> None:
+        """Select -2 h image."""
         file, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select –2 h image", str(IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
+            self, "Select -2 h image", str(IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
         )
         if file:
             self.img2h_path = Path(file)
             self._check_ready()
 
     def choose_img1h(self) -> None:
+        """Select -1 h image."""
         file, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self, "Select –1 h image", str(IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
+            self, "Select -1 h image", str(IMAGE_DIR), "Images (*.png *.jpg *.jpeg)"
         )
         if file:
             self.img1h_path = Path(file)
             self._check_ready()
 
     def _check_ready(self) -> None:
+        """Check if both images selected, and enable predict button."""
         self.predict_btn.setEnabled(bool(self.img2h_path and self.img1h_path))
 
     def _load_tensor(self, path: Path) -> Tensor:
+        """Load image as tensor."""
         if self.device is None:
             # lazily init device to let CPU/GPU be chosen at runtime
             _, self.device = load_model_for_inference()
@@ -101,6 +109,7 @@ class SunsetGUI(QtWidgets.QWidget):
         return self.transform(img).unsqueeze(0).to(self.device)
 
     def predict_score(self) -> None:
+        """Predict score for a pair of sunset images."""
         if self.model is None or self.device is None:
             self.load_trained_model()
         assert (

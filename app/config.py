@@ -1,4 +1,7 @@
 # sunsets/model/config.py
+"""
+Configuration for sunset_ml app.
+"""
 from __future__ import annotations
 
 from pathlib import Path
