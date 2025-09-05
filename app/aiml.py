@@ -1,6 +1,7 @@
-# sunset_ml/app/aiml.py
+# app/aiml.py
 """
 Utilities for training and evaluating sunset_ml model
+Now emits optional progress callbacks so a GUI can display live logs/metrics.
 """
 from __future__ import annotations
 
@@ -9,7 +10,7 @@ import sys
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 # 3rd Party Imports
 import random
@@ -23,8 +24,7 @@ from torchvision import models
 # 1st Party Imports
 BASE_DIR: Path = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))
-# print("REPO_DIR:", BASE_DIR)
-from app.config import (
+from app.config import (  # type: ignore
     NUM_CLASSES,
     IMAGE_SIZE,
     BATCH_SIZE,
@@ -36,7 +36,7 @@ from app.config import (
     IMAGE_DIR,
     MODEL_PATH,
 )
-from app.datahandler import create_transform, create_dataloaders
+from app.datahandler import create_transform, create_dataloaders  # type: ignore
 
 
 # -----------------------------
@@ -133,6 +133,7 @@ class DualResNet(nn.Module):
 @dataclass(frozen=True)
 class TrainConfig:
     """Training config."""
+
     image_size: int = IMAGE_SIZE
     batch_size: int = BATCH_SIZE
     num_epochs: int = NUM_EPOCHS
@@ -236,8 +237,38 @@ def evaluate(
     )
 
 
-def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
-    """End-to-end training loop that saves the best checkpoint and prints a report."""
+# ---- NEW: tiny helper so we can safely emit progress from any point ----------
+def _emit(
+    progress: Optional[Callable[[str, Dict[str, Any]], None]],
+    event: str,
+    **payload: Any,
+) -> None:
+    if progress is None:
+        return
+    try:
+        progress(event, payload)
+    except Exception:
+        # GUI closed, or callback unavailable—just ignore
+        pass
+
+
+def train_and_save(
+    cfg: Optional[TrainConfig] = None,
+    progress: Optional[Callable[[str, Dict[str, Any]], None]] = None,
+) -> Dict[str, Any]:
+    """
+    End-to-end training loop that saves the best checkpoint and prints a report.
+
+    If `progress` is provided, emits events:
+      - ('log', {'text': ...})
+      - ('epoch', {'epoch': int, 'total_epochs': int,
+                   'train_loss': float, 'train_acc': float,
+                   'val_loss': float, 'val_acc': float})
+      - ('checkpoint', {'val_acc': float})
+      - ('final', {'confusion_matrix': [[...]], 'classification_report': str})
+
+    Returns a small summary dict containing history.
+    """
     cfg = cfg or TrainConfig()
     set_seed(cfg.seed)
     device = create_device()
@@ -251,45 +282,82 @@ def train_and_save(cfg: Optional[TrainConfig] = None) -> None:
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=cfg.learning_rate)
 
+    history: List[Dict[str, float]] = []
     best_val_acc = float("-inf")
+
     for epoch in range(cfg.num_epochs):
         train_loss, train_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, device
         )
         val_loss, val_acc, _, _ = evaluate(model, val_loader, criterion, device)
-        print(
+        line = (
             f"Epoch [{epoch + 1}/{cfg.num_epochs}] | "
             f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f} | "
             f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}"
+        )
+        print(line)
+        _emit(progress, "log", text=line)
+        _emit(
+            progress,
+            "epoch",
+            epoch=epoch + 1,
+            total_epochs=cfg.num_epochs,
+            train_loss=float(train_loss),
+            train_acc=float(train_acc),
+            val_loss=float(val_loss),
+            val_acc=float(val_acc),
+        )
+        history.append(
+            dict(
+                epoch=epoch + 1,
+                train_loss=float(train_loss),
+                train_acc=float(train_acc),
+                val_loss=float(val_loss),
+                val_acc=float(val_acc),
+            )
         )
 
         if val_acc >= best_val_acc:
             best_val_acc = val_acc
             save_checkpoint(model, MODEL_PATH)
-            print(f"Saved new best model with Val Acc: {best_val_acc:.4f}")
+            msg = f"Saved new best model with Val Acc: {best_val_acc:.4f}"
+            print(msg)
+            _emit(progress, "log", text=msg)
+            _emit(progress, "checkpoint", val_acc=float(best_val_acc))
 
     if not MODEL_PATH.exists():
         save_checkpoint(model, MODEL_PATH)
-        print(
-            "No checkpoint was saved during training - wrote final epoch weights instead."
-        )
+        msg = "No checkpoint was saved during training - wrote final epoch weights instead."
+        print(msg)
+        _emit(progress, "log", text=msg)
 
     # Final evaluation using best checkpoint (when compatible)
     model = load_best_if_exists(model, MODEL_PATH, device)
     _, _, val_preds, val_labels = evaluate(model, val_loader, criterion, device)
 
     if val_preds.size == 0 or val_labels.size == 0:
-        print(
-            "No validation samples available to compute confusion matrix / classification report."
-        )
-        return
+        msg = "No validation samples available to compute confusion matrix / classification report."
+        print(msg)
+        _emit(progress, "log", text=msg)
+        return {"history": history, "best_val_acc": float(best_val_acc)}
 
     cm = confusion_matrix(val_labels, val_preds)
+    report = classification_report(val_labels, val_preds, digits=4)
     print("Confusion Matrix:\n", cm)
-    print(
-        "Classification Report:\n",
-        classification_report(val_labels, val_preds, digits=4),
+    print("Classification Report:\n", report)
+    _emit(
+        progress,
+        "final",
+        confusion_matrix=cm.astype(int).tolist(),
+        classification_report=str(report),
     )
+
+    return {
+        "history": history,
+        "best_val_acc": float(best_val_acc),
+        "confusion_matrix": cm.astype(int).tolist(),
+        "classification_report": str(report),
+    }
 
 
 # -----------------------------
