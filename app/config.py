@@ -21,11 +21,11 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
 # Model / training config
 NUM_CLASSES: int = 5
-IMAGE_SIZE: int = 64
-BATCH_SIZE: int = 32
-NUM_EPOCHS: int = 10
-LEARNING_RATE: float = 1e-4
-VAL_SPLIT: float = 0.2
+IMAGE_SIZE: int = 32
+BATCH_SIZE: int = 64
+NUM_EPOCHS: int = 64
+LEARNING_RATE: float = 2e-5
+VAL_SPLIT: float = 0.15
 RANDOM_SEED: int = 42
 
 # Normalization (ImageNet)

@@ -5,8 +5,9 @@ GUI front-end for sunset_ml app, extended with image processing and rating workf
 - "Process new images" runs the same logic as order_images.py to scan the img folder
   and update the grouped JSON.
 - If new dates/images were added, you'll be asked to rate them now.
-- The rating flow shows the day's "0h" image and lets you assign a 1–5 score,
-  with Back/Review/Quit controls, then returns to the main menu when done.
+- The rating flow shows the day's sunset image (explicit 0h, or inferred for single-image days)
+  and lets you assign a 1–5 score, with Back/Review/Quit controls,
+  then returns to the main menu when done.
 
 This file assumes the repository layout used in the original sources where this module
 resides under ".../model/gui.py" and the project's base directory (two parents up)
@@ -20,6 +21,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from datetime import datetime, date, timedelta
 
 # 3rd-party imports
 import torch
@@ -54,12 +56,83 @@ from order_images import (  # type: ignore
 
 # ----------------------------- utilities ------------------------------------
 
+# Heuristics for inferring sunset when a day has only a single image.
+_NEIGHBOR_WINDOW_DAYS = 14
+_SUNSET_TOLERANCE_MIN = 25  # minutes difference allowed vs neighbor 0h median
+
+
+def _parse_iso_local(dt_str: str) -> Optional[datetime]:
+    try:
+        # ImageRecord.datetime is ISO 8601 string; treat as naive local time
+        return datetime.fromisoformat(dt_str)
+    except Exception:
+        return None
+
 
 def _find_0h_name(images: List[Dict[str, str]]) -> Optional[str]:
     """Return the filename for the '0h' image in a day's image list."""
     for img in images:
         if str(img.get("type")) == "0h":
             return str(img.get("name"))
+    return None
+
+
+def _sunset_candidate_name(entry: Dict, all_entries: List[Dict]) -> Optional[str]:
+    """
+    Return the name of the sunset image to display for rating:
+    - Prefer the explicit '0h' image if present.
+    - If the day has exactly one image, infer sunset using neighbor days' 0h times:
+      compute the median 0h time-of-day from entries within ±NEIGHBOR_WINDOW_DAYS
+      and accept if within ±SUNSET_TOLERANCE_MIN of the single image's time-of-day.
+    Otherwise return None (not rankable).
+    """
+    images = entry.get("images") or []
+    # Explicit 0h takes precedence
+    name0 = _find_0h_name(images)
+    if name0:
+        return name0
+    # Infer only if it's a single-image day
+    if len(images) != 1:
+        return None
+    only = images[0]
+    only_dt = _parse_iso_local(str(only.get("datetime", "")))
+    if not only_dt:
+        return None
+    # Collect neighbor 0h times within window
+    d0_str = str(entry.get("date", ""))
+    try:
+        d0 = date.fromisoformat(d0_str)
+    except Exception:
+        return None
+    mins: List[int] = []
+    for e in all_entries:
+        if e is entry:
+            continue
+        ds = e.get("date")
+        try:
+            dd = date.fromisoformat(str(ds))
+        except Exception:
+            continue
+        if abs((dd - d0).days) > _NEIGHBOR_WINDOW_DAYS:
+            continue
+        # get this neighbor's 0h
+        n0_name = _find_0h_name(e.get("images") or [])
+        if not n0_name:
+            continue
+        # find datetime for that 0h
+        for im in e.get("images") or []:
+            if str(im.get("name")) == n0_name:
+                ndt = _parse_iso_local(str(im.get("datetime", "")))
+                if ndt:
+                    mins.append(ndt.hour * 60 + ndt.minute)
+                break
+    if not mins:
+        return None
+    mins.sort()
+    median_min = mins[len(mins) // 2]
+    only_min = only_dt.hour * 60 + only_dt.minute
+    if abs(only_min - median_min) <= _SUNSET_TOLERANCE_MIN:
+        return str(only.get("name"))
     return None
 
 
@@ -201,9 +274,10 @@ class ReviewDialog(QtWidgets.QDialog):
             self.preview_label.setText("Preview")
             return
         entry = self._all_entries[idx]
-        name = _find_0h_name(entry.get("images") or [])
+        # Prefer explicit 0h; otherwise show inferred single-image sunset if available
+        name = _sunset_candidate_name(entry, self._all_entries)
         if not name:
-            self.preview_label.setText("No 0h image for this date")
+            self.preview_label.setText("No sunset image available")
             return
         path = self.image_dir / name
         if not path.exists():
@@ -264,7 +338,9 @@ class RatingWidget(QtWidgets.QWidget):
         # state
         self.entries: List[Dict] = _load_json_safely(self.json_path)
         self.pending_indices: List[int] = [
-            i for i, e in enumerate(self.entries) if int(e.get("score", -1)) == -1
+            i
+            for i, e in enumerate(self.entries)
+            if int(e.get("score", -1)) == -1 and _sunset_candidate_name(e, self.entries)
         ]
         self.pos: int = 0
 
@@ -338,9 +414,9 @@ class RatingWidget(QtWidgets.QWidget):
         self.day_label.setText(
             f"Date: {entry.get('date', '')}    (item {self.pos+1}/{len(self.pending_indices)})"
         )
-        name = _find_0h_name(entry.get("images") or [])
+        name = _sunset_candidate_name(entry, self.entries)
         if not name:
-            self.image_label.setText("No 0h image for this date")
+            self.image_label.setText("No sunset image available")
         else:
             path = self.image_dir / name
             pix = QtGui.QPixmap(str(path))
@@ -403,9 +479,11 @@ class RatingWidget(QtWidgets.QWidget):
         dlg.exec()
         # reload entries in case of edits
         self.entries = _load_json_safely(self.json_path)
-        # Recompute pending list (any rows with -1 score)
+        # Recompute pending list (any rows with -1 score and a sunset candidate)
         self.pending_indices = [
-            i for i, e in enumerate(self.entries) if int(e.get("score", -1)) == -1
+            i
+            for i, e in enumerate(self.entries)
+            if int(e.get("score", -1)) == -1 and _sunset_candidate_name(e, self.entries)
         ]
         # Clamp pos
         self.pos = min(self.pos, max(0, len(self.pending_indices) - 1))
@@ -587,7 +665,7 @@ class SunsetGUI(QtWidgets.QWidget):
             QtWidgets.QMessageBox.information(self, "No changes", msg)
 
     def open_rater(self) -> None:
-        """Open rating widget for entries with score == -1."""
+        """Open rating widget for entries with score == -1 and an available sunset image."""
         # Construct or reuse rater
         if self.rater is None:
             self.rater = RatingWidget(IMAGE_DIR, JSON_PATH, self)
@@ -601,6 +679,7 @@ class SunsetGUI(QtWidgets.QWidget):
                 i
                 for i, e in enumerate(self.rater.entries)
                 if int(e.get("score", -1)) == -1
+                and _sunset_candidate_name(e, self.rater.entries)
             ]
             self.rater.pos = 0
             self.rater._update_view()
