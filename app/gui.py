@@ -3,12 +3,17 @@
 Main GUI for sunset_ml. Training graphs now live in a popup dialog (only shown
 when 'Train model' is pressed). A separate 'Model performance…' popup shows
 summary metrics for the currently loaded/best model.
+
+Now also includes a 'Add weather data to JSON' button that uses app.weather
+to backfill METAR-based weather into the dataset JSON without blocking the UI.
 """
 from __future__ import annotations
 
 # Python imports
 import sys
 import json
+import io
+import contextlib
 from pathlib import Path
 from typing import Dict, List, Optional
 from datetime import datetime, date
@@ -32,6 +37,11 @@ from app.aiml import (  # type: ignore
     predict_class_index,
 )
 from app.aiml_graphs import TrainingMonitorDialog, SummaryGraphsDialog  # NEW
+
+# Weather integration
+# We import inside the worker thread so that missing 'requests' or network errors
+# do not prevent the GUI from launching. (app.weather itself imports requests.)
+# from app.weather import backfill_weather_for_json
 
 # order_images helpers (optional)
 try:
@@ -305,6 +315,50 @@ class ReviewDialog(QtWidgets.QDialog):
             )
 
 
+# ----------------------------- Weather worker/dialog -------------------------
+
+
+class WeatherThread(QtCore.QThread):
+    """
+    Background worker that runs app.weather.backfill_weather_for_json() and
+    captures its stdout so we can show a log to the user.
+    """
+
+    done = QtCore.pyqtSignal(str)  # captured log text
+
+    def run(self) -> None:
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(buf):
+                # Import here to avoid hard-failing GUI launch if requests isn't present
+                from app.weather import backfill_weather_for_json  # type: ignore
+
+                backfill_weather_for_json(dry_run=False, verbose=True)
+        except Exception as exc:
+            print(f"[weather] Error: {exc}", file=buf)
+        self.done.emit(buf.getvalue())
+
+
+class WeatherLogDialog(QtWidgets.QDialog):
+    """Simple dialog to display the captured weather backfill log."""
+
+    def __init__(self, parent: Optional[QtWidgets.QWidget], text: str) -> None:
+        super().__init__(parent)
+        self.setWindowTitle("Weather backfill log")
+        self.resize(700, 500)
+        vbox = QtWidgets.QVBoxLayout(self)
+        self.console = QtWidgets.QPlainTextEdit()
+        self.console.setReadOnly(True)
+        self.console.setPlainText(text or "")
+        vbox.addWidget(self.console, 1)
+        btn = QtWidgets.QPushButton("Close")
+        btn.clicked.connect(self.accept)
+        row = QtWidgets.QHBoxLayout()
+        row.addStretch(1)
+        row.addWidget(btn)
+        vbox.addLayout(row)
+
+
 # ----------------------------- Rating Widget --------------------------------
 
 
@@ -531,6 +585,18 @@ class SunsetGUI(QtWidgets.QWidget):
         actions.addWidget(self.rank_btn)
         actions.addWidget(self.review_btn)
         main_layout.addLayout(actions)
+
+        # ── weather integration ───────────────────────────────
+        sep2 = QtWidgets.QFrame()
+        sep2.setFrameShape(QtWidgets.QFrame.Shape.HLine)
+        main_layout.addWidget(sep2)
+
+        self.weather_btn = QtWidgets.QPushButton("Add weather data to JSON")
+        self.weather_btn.setToolTip(
+            "Fetch METAR data via AviationWeather.gov and add a 'weather' block to each date."
+        )
+        main_layout.addWidget(self.weather_btn)
+
         main_layout.addStretch(1)
 
         # wiring
@@ -542,10 +608,12 @@ class SunsetGUI(QtWidgets.QWidget):
         self.process_btn.clicked.connect(self.process_new_images)
         self.rank_btn.clicked.connect(self.open_rater)
         self.review_btn.clicked.connect(self.open_review)
+        self.weather_btn.clicked.connect(self.update_weather_json)
 
         self.rater: Optional[RatingWidget] = None
         self._training_thread: Optional[TrainingThread] = None
         self._monitor_dialog: Optional[TrainingMonitorDialog] = None
+        self._weather_thread: Optional[WeatherThread] = None
 
     # ---- training actions ---------------------------------------------------
     def train_model(self) -> None:
@@ -689,4 +757,30 @@ class SunsetGUI(QtWidgets.QWidget):
 
     def open_review(self) -> None:
         dlg = ReviewDialog(self, IMAGE_DIR, JSON_PATH)
+        dlg.exec()
+
+    # ---- weather integration -----------------------------------------------
+    def update_weather_json(self) -> None:
+        """Kick off weather backfill in the background and show a log when done."""
+        if self._weather_thread is not None and self._weather_thread.isRunning():
+            QtWidgets.QMessageBox.information(
+                self, "Weather", "Weather update is already running."
+            )
+            return
+
+        self.weather_btn.setEnabled(False)
+        self.weather_btn.setText("Fetching weather…")
+
+        th = WeatherThread()
+        th.done.connect(self._weather_finished)
+        self._weather_thread = th
+        th.start()
+
+    @QtCore.pyqtSlot(str)
+    def _weather_finished(self, log_text: str) -> None:
+        self.weather_btn.setEnabled(True)
+        self.weather_btn.setText("Add weather data to JSON")
+
+        # Show full captured log (includes per-entry messages and summary)
+        dlg = WeatherLogDialog(self, log_text)
         dlg.exec()
